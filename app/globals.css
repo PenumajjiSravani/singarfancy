@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Refined Brand Colors from Screenshot */
+  --color-background: #FDFBF7; /* Creamy Ivory */
+  --color-foreground: #3D1014; /* Deep Burgundy Noir */
+  --color-primary: #58181F;    /* Rich Burgundy */
+  --color-accent: #C5A059;     /* Burnished Gold */
+  --color-secondary: #F4E8D1;  /* Champagne Blush */
+  --color-muted: #EFE9DE;      /* Oat Cream */
+
+  /* Typography */
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Inter", "Lato", sans-serif;
+
+  /* Custom Utilities */
+  --background-image-gradient-luxury: linear-gradient(135deg, #58181F, #C5A059);
+  --shadow-elegant: 0 10px 40px -15px rgba(61, 16, 20, 0.15);
+
+  /* Animations */
+  --animate-shimmer: shimmer 2.5s infinite linear;
+  
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+:root {
+  --background: #FDFBF7;
+  --foreground: #3D1014;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #C5A059 25%, #F4E8D1 50%, #C5A059 75%);
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 2.5s infinite linear;
+}
+
+.luxury-button {
+  @apply relative overflow-hidden bg-primary text-background px-10 py-4 transition-all duration-500 hover:shadow-elegant hover:-translate-y-1 uppercase tracking-[0.2em] text-[10px] font-bold;
+}
+
+.luxury-button-outline {
+  @apply relative overflow-hidden border border-primary text-primary px-10 py-4 transition-all duration-500 hover:bg-primary hover:text-background uppercase tracking-[0.2em] text-[10px] font-bold;
+}
+
+.announcement-bar {
+  @apply bg-primary text-background text-[9px] uppercase tracking-[0.3em] py-2 text-center font-bold;
+}
