@@ -10,10 +10,10 @@ import {
     Package, MapPin, Phone, Mail, Sparkles, Clock, CheckCircle, Truck, XCircle, Home
 } from "lucide-react";
 
-type Section = "overview" | "orders" | "wishlist" | "profile";
+type Section = "overview" | "orders" | "wishlist" | "profile" | "settings";
 
-const statusIcon = { Processing: Clock, Shipped: Truck, Delivered: CheckCircle, Cancelled: XCircle };
-const statusColor = { Processing: "text-amber-600 bg-amber-50", Shipped: "text-blue-600 bg-blue-50", Delivered: "text-green-600 bg-green-50", Cancelled: "text-red-500 bg-red-50" };
+const statusIcon: Record<string, any> = { Pending: Clock, Confirmed: CheckCircle, Ready: Package, Processing: Clock, Shipped: Truck, Delivered: CheckCircle, Cancelled: XCircle };
+const statusColor: Record<string, string> = { Pending: "text-amber-600 bg-amber-50", Confirmed: "text-blue-600 bg-blue-50", Ready: "text-purple-600 bg-purple-50", Processing: "text-amber-600 bg-amber-50", Shipped: "text-blue-600 bg-blue-50", Delivered: "text-green-600 bg-green-50", Cancelled: "text-red-500 bg-red-50" };
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -71,10 +71,10 @@ export default function DashboardPage() {
                 <div className="p-6 border-b border-[#F4E8D1]">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#58181F] flex items-center justify-center text-white font-bold text-sm">
-                            {user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                            {(user.name ?? "User").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                            <p className="font-semibold text-[#3D1014] text-sm truncate">{user.name}</p>
+                            <p className="font-semibold text-[#3D1014] text-sm truncate">{user.name ?? "User"}</p>
                             <p className="text-[10px] text-[#3D1014]/40 truncate">{user.email}</p>
                         </div>
                     </div>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
                             <div className="mb-8">
                                 <p className="text-[10px] uppercase tracking-[0.35em] text-[#C5A059] font-bold mb-1">Welcome Back</p>
-                                <h1 className="text-[30px] font-serif text-[#3D1014]">Hello, {user.name.split(" ")[0]} 👋</h1>
+                                <h1 className="text-[30px] font-serif text-[#3D1014]">Hello, {(user.name ?? "User").split(" ")[0]} 👋</h1>
                                 <p className="text-[#3D1014]/50 text-sm mt-1">Member since {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</p>
                             </div>
 
@@ -297,10 +297,10 @@ export default function DashboardPage() {
                                 {/* Avatar */}
                                 <div className="flex items-center gap-5 mb-8 pb-8 border-b border-[#F4E8D1]">
                                     <div className="w-16 h-16 rounded-full bg-[#58181F] flex items-center justify-center text-white text-xl font-bold">
-                                        {user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                                        {(user.name ?? "User").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                                     </div>
                                     <div>
-                                        <h2 className="font-serif text-xl text-[#3D1014]">{user.name}</h2>
+                                        <h2 className="font-serif text-xl text-[#3D1014]">{user.name ?? "User"}</h2>
                                         <p className="text-[11px] text-[#3D1014]/40 uppercase tracking-widest">Member since {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</p>
                                     </div>
                                     <button onClick={() => setEditMode(!editMode)} className={`ml-auto px-4 py-2 rounded-lg text-[11px] uppercase tracking-widest font-bold transition-all ${editMode ? "bg-[#F4E8D1] text-[#3D1014]" : "bg-[#58181F] text-white hover:bg-[#3D1014]"}`}>

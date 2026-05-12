@@ -27,7 +27,7 @@ export interface Order {
     userId: string;
     products: { name: string; image: string; price: number; qty: number; category: string }[];
     total: number;
-    status: "Processing" | "Shipped" | "Delivered" | "Cancelled";
+    status: "Pending" | "Confirmed" | "Ready" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
     date: string;
     address: string;
 }

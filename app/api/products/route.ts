@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const category = searchParams.get('category');
 
-        const filter = category ? { category } : {};
+        const filter: any = category ? { category } : {};
         const products = await Product.find(filter).lean();
 
         return NextResponse.json(products);
