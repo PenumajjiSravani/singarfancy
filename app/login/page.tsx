@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useStore } from "@/lib/store";
 import Link from "next/link";
 import Image from "next/image";
 import { Eye, EyeOff, Phone, Mail, ArrowRight, Sparkles } from "lucide-react";
@@ -12,6 +13,7 @@ type OtpStep = "phone" | "otp";
 
 export default function LoginPage() {
     const router = useRouter();
+    const { login } = useStore();
 
     const [tab, setTab] = useState<Tab>("email");
     const [showPass, setShowPass] = useState(false);

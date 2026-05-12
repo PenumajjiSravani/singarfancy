@@ -56,8 +56,8 @@ export const authOptions: NextAuthOptions = {
                 const existing = await User.findOne({ email: user.email! });
                 if (!existing) {
                     await User.create({
-                        name: user.name,
-                        email: user.email,
+                        name: user.name ?? "Google User",
+                        email: user.email!,
                         provider: "google",
                         role: "user",
                     });
