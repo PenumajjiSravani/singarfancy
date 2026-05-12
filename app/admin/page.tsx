@@ -1,327 +1,301 @@
 "use client";
+
 import { useEffect, useState } from "react";
-import { useStore, MOCK_ORDERS, MOCK_CUSTOMERS, SAMPLE_PRODUCTS } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-    LayoutDashboard, ShoppingBag, Users, Package,
-    LogOut, Sparkles, TrendingUp, IndianRupee,
-    Clock, CheckCircle, Truck, XCircle, ChevronRight, Settings
+    LayoutDashboard, ShoppingBag, FolderTree, Package,
+    LogOut, Settings, Menu, X, Edit, Trash2, IndianRupee,
+    Clock, CheckCircle, UploadCloud, AlertTriangle
 } from "lucide-react";
 
-type Section = "overview" | "orders" | "products" | "customers" | "settings";
+import { MOCK_ORDERS, MOCK_CUSTOMERS, SAMPLE_PRODUCTS } from "@/lib/store";
 
-const statusColor: Record<string, string> = {
-    Processing: "text-amber-600 bg-amber-50 border-amber-100",
-    Shipped: "text-blue-600 bg-blue-50 border-blue-100",
-    Delivered: "text-green-600 bg-green-50 border-green-100",
-    Cancelled: "text-red-500 bg-red-50 border-red-100",
-};
-const statusIcon: Record<string, React.ElementType> = {
-    Processing: Clock, Shipped: Truck, Delivered: CheckCircle, Cancelled: XCircle,
-};
-
-const revenueData = [
-    { month: "Jan", value: 18400 },
-    { month: "Feb", value: 22000 },
-    { month: "Mar", value: 19800 },
-    { month: "Apr", value: 31200 },
-    { month: "May", value: 24580 },
-];
-const maxRev = Math.max(...revenueData.map((d) => d.value));
+type Section = "dashboard" | "products" | "orders" | "categories" | "settings";
 
 export default function AdminPage() {
     const router = useRouter();
     const { data: session, status } = useSession();
     const user = session?.user;
-    const [section, setSection] = useState<Section>("overview");
+    
+    const [section, setSection] = useState<Section>("dashboard");
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
+    // Authentication Guard
     useEffect(() => {
         if (status === "unauthenticated") { router.push("/login"); return; }
-        if (user && user.role !== "admin") { router.push("/dashboard"); }
+        // Uncomment once role setup is verified
+        // if (user && user.role !== "admin") { router.push("/dashboard"); }
     }, [user, status, router]);
 
-    if (status === "loading" || !user || user.role !== "admin") return <div className="min-h-screen bg-[#0F0608]" />;
+    if (status === "loading" || !user) return <div className="min-h-screen bg-[#FDFBF7]" />;
 
-    const totalRevenue = MOCK_ORDERS.filter(o => o.status === "Delivered").reduce((s, o) => s + o.total, 0);
+    // Derived Stats
     const totalOrders = MOCK_ORDERS.length;
-    const totalCustomers = MOCK_CUSTOMERS.length;
+    const pendingOrders = MOCK_ORDERS.filter(o => o.status === "Processing" || o.status === "Pending").length;
+    const deliveredOrders = MOCK_ORDERS.filter(o => o.status === "Delivered").length;
     const totalProducts = SAMPLE_PRODUCTS.length;
+    const totalRevenue = MOCK_ORDERS.filter(o => o.status === "Delivered").reduce((s, o) => s + o.total, 0);
 
-    const stats = [
-        { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString("en-IN")}`, icon: IndianRupee, color: "bg-[#58181F]", change: "+18%" },
-        { label: "Total Orders", value: totalOrders, icon: ShoppingBag, color: "bg-[#C5A059]", change: "+12%" },
-        { label: "Customers", value: totalCustomers, icon: Users, color: "bg-violet-600", change: "+8%" },
-        { label: "Products", value: totalProducts, icon: Package, color: "bg-emerald-600", change: "Active" },
-    ];
+    const lowStockProducts = SAMPLE_PRODUCTS.slice(0, 2); // Mocking low stock
 
     const navLinks = [
-        { id: "overview", label: "Overview", icon: LayoutDashboard },
-        { id: "orders", label: "Orders", icon: ShoppingBag, badge: MOCK_ORDERS.filter(o => o.status === "Processing").length },
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "products", label: "Products", icon: Package },
-        { id: "customers", label: "Customers", icon: Users },
+        { id: "orders", label: "Orders", icon: ShoppingBag, badge: pendingOrders },
+        { id: "categories", label: "Categories", icon: FolderTree },
         { id: "settings", label: "Settings", icon: Settings },
     ];
 
+    const handleNav = (id: Section) => {
+        setSection(id);
+        setIsMobileMenuOpen(false);
+    }
+
     return (
-        <div className="min-h-screen bg-[#0F0608] flex">
-            {/* Dark Sidebar */}
-            <aside className="w-60 bg-[#1A0A0C] border-r border-white/5 flex flex-col sticky top-0 h-screen">
-                <div className="p-6 border-b border-white/5">
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <Sparkles size={15} className="text-[#C5A059]" />
-                        <div>
-                            <span className="block text-[8px] tracking-[0.4em] uppercase text-[#C5A059] font-bold leading-none">Singar</span>
-                            <span className="block text-lg font-serif text-white italic leading-tight">Fancy</span>
-                        </div>
+        <div className="min-h-screen bg-[#F8F5F0] flex">
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside className={`fixed lg:static top-0 left-0 h-screen w-64 bg-[#1A0A0C] z-50 transform transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} flex flex-col`}>
+                <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                    <Link href="/" className="flex flex-col">
+                        <span className="text-[10px] tracking-[0.3em] uppercase text-[#C5A059] font-bold">Singar</span>
+                        <span className="text-xl font-serif text-white italic">Admin</span>
                     </Link>
-                    <div className="mt-3 px-2 py-1 bg-[#C5A059]/10 rounded text-[9px] uppercase tracking-widest text-[#C5A059] font-bold text-center">
-                        Admin Panel
-                    </div>
+                    <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
+                        <X size={20} />
+                    </button>
                 </div>
 
-                <div className="p-5 border-b border-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C5A059] to-[#58181F] flex items-center justify-center text-white font-bold text-xs">
-                            AD
-                        </div>
-                        <div>
-                            <p className="text-white text-sm font-semibold">{user.name}</p>
-                            <p className="text-white/30 text-[10px]">Administrator</p>
-                        </div>
-                    </div>
-                </div>
-
-                <nav className="flex-1 p-4 space-y-1">
+                <nav className="flex-1 p-4 space-y-2">
                     {navLinks.map(({ id, label, icon: Icon, badge }) => (
                         <button
                             key={id}
-                            onClick={() => setSection(id as Section)}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${section === id ? "bg-[#58181F] text-white" : "text-white/40 hover:bg-white/5 hover:text-white/80"}`}
+                            onClick={() => handleNav(id as Section)}
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-all ${
+                                section === id 
+                                ? "bg-[#C5A059] text-[#1A0A0C] font-bold" 
+                                : "text-white/60 hover:bg-white/5 hover:text-white"
+                            }`}
                         >
-                            <span className="flex items-center gap-2.5"><Icon size={15} />{label}</span>
+                            <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
                             {badge !== undefined && badge > 0 && (
-                                <span className="text-[9px] font-bold bg-[#C5A059] text-white px-1.5 py-0.5 rounded-full">{badge}</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${section === id ? 'bg-[#1A0A0C] text-[#C5A059]' : 'bg-[#58181F] text-white'}`}>
+                                    {badge}
+                                </span>
                             )}
                         </button>
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-white/5">
-                    <Link href="/" className="w-full flex items-center gap-2 px-3 py-2 text-white/30 hover:text-white text-xs mb-1 rounded-lg hover:bg-white/5 transition-colors">
-                        <ChevronRight size={14} className="rotate-180" /> View Store
-                    </Link>
-                    <button onClick={() => signOut({ callbackUrl: "/" })} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors">
-                        <LogOut size={15} /> Sign Out
+                <div className="p-4 border-t border-white/10">
+                    <button onClick={() => signOut({ callbackUrl: "/" })} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-red-400 hover:bg-red-400/10 transition-colors font-medium">
+                        <LogOut size={18} /> Logout
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto bg-[#F8F5F0]">
-                <div className="max-w-5xl mx-auto px-8 py-10">
+            <main className="flex-1 overflow-y-auto w-full">
+                {/* Header (Mobile) */}
+                <header className="bg-white border-b border-[#F4E8D1] p-4 flex items-center justify-between sticky top-0 z-30">
+                    <div className="flex items-center gap-4">
+                        <button className="lg:hidden text-[#3D1014]" onClick={() => setIsMobileMenuOpen(true)}>
+                            <Menu size={24} />
+                        </button>
+                        <h2 className="text-lg font-serif text-[#3D1014] capitalize">{section}</h2>
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/40">
+                        Welcome Back
+                    </div>
+                </header>
 
-                    {/* OVERVIEW */}
-                    {section === "overview" && (
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                            <div className="mb-8">
-                                <p className="text-[10px] uppercase tracking-[0.35em] text-[#C5A059] font-bold mb-1">Dashboard</p>
-                                <h1 className="text-[28px] font-serif text-[#3D1014]">Good evening, Admin 👑</h1>
-                                <p className="text-[#3D1014]/40 text-sm mt-1">Here's what's happening at Singar Fancy today.</p>
-                            </div>
-
+                <div className="p-4 md:p-8 max-w-6xl mx-auto">
+                    
+                    {/* DASHBOARD */}
+                    {section === "dashboard" && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                             {/* Stats */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                                {stats.map((s) => (
-                                    <div key={s.label} className="bg-white rounded-xl border border-[#F4E8D1] p-5">
-                                        <div className={`w-9 h-9 ${s.color} rounded-lg flex items-center justify-center mb-3`}>
-                                            <s.icon size={16} className="text-white" />
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                                {[
+                                    { label: "Total Products", value: totalProducts, icon: Package, color: "text-blue-500 bg-blue-50" },
+                                    { label: "Total Orders", value: totalOrders, icon: ShoppingBag, color: "text-purple-500 bg-purple-50" },
+                                    { label: "Pending", value: pendingOrders, icon: Clock, color: "text-amber-500 bg-amber-50" },
+                                    { label: "Delivered", value: deliveredOrders, icon: CheckCircle, color: "text-green-500 bg-green-50" },
+                                    { label: "Revenue", value: `₹${totalRevenue.toLocaleString("en-IN")}`, icon: IndianRupee, color: "text-rose-500 bg-rose-50" },
+                                ].map((s, i) => (
+                                    <div key={i} className="bg-white p-5 rounded-xl shadow-sm border border-[#F4E8D1]">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${s.color}`}>
+                                            <s.icon size={16} />
                                         </div>
-                                        <p className="text-[22px] font-bold font-serif text-[#3D1014]">{s.value}</p>
-                                        <p className="text-[10px] uppercase tracking-widest text-[#3D1014]/40 mt-0.5">{s.label}</p>
-                                        <p className="text-[10px] text-emerald-500 font-bold mt-1 flex items-center gap-0.5">
-                                            <TrendingUp size={10} /> {s.change}
-                                        </p>
+                                        <h3 className="text-xl font-bold text-[#3D1014]">{s.value}</h3>
+                                        <p className="text-xs text-[#3D1014]/50 font-medium uppercase tracking-wider mt-1">{s.label}</p>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Revenue Chart */}
-                            <div className="bg-white rounded-xl border border-[#F4E8D1] p-6 mb-6">
-                                <h2 className="font-serif text-[18px] text-[#3D1014] mb-6">Revenue Overview</h2>
-                                <div className="flex items-end gap-4 h-36">
-                                    {revenueData.map((d) => (
-                                        <div key={d.month} className="flex-1 flex flex-col items-center gap-2">
-                                            <span className="text-[10px] text-[#3D1014]/50 font-bold">₹{(d.value / 1000).toFixed(0)}k</span>
-                                            <div className="w-full rounded-t-md bg-gradient-to-t from-[#58181F] to-[#C5A059] transition-all" style={{ height: `${(d.value / maxRev) * 100}px` }} />
-                                            <span className="text-[10px] uppercase tracking-widest text-[#3D1014]/40 font-bold">{d.month}</span>
-                                        </div>
-                                    ))}
+                            <div className="grid md:grid-cols-3 gap-8">
+                                {/* Recent Orders */}
+                                <div className="md:col-span-2 bg-white rounded-xl shadow-sm border border-[#F4E8D1] overflow-hidden">
+                                    <div className="p-5 border-b border-[#F4E8D1] flex justify-between items-center">
+                                        <h3 className="font-serif text-lg text-[#3D1014]">Recent Orders</h3>
+                                        <button onClick={() => setSection("orders")} className="text-[10px] font-bold uppercase tracking-widest text-[#C5A059]">View All</button>
+                                    </div>
+                                    <div className="p-5 text-center text-sm text-[#3D1014]/50 py-10">
+                                        {MOCK_ORDERS.length > 0 ? (
+                                             <table className="w-full text-left hidden md:table">
+                                                <thead>
+                                                    <tr className="text-[10px] uppercase text-[#3D1014]/40 border-b border-[#F4E8D1]">
+                                                        <th className="pb-3 font-bold">Customer</th>
+                                                        <th className="pb-3 font-bold">Amount</th>
+                                                        <th className="pb-3 font-bold">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {MOCK_ORDERS.slice(0,5).map(o => (
+                                                        <tr key={o.id} className="border-b border-[#F4E8D1] last:border-0 text-sm text-[#3D1014]">
+                                                            <td className="py-3 font-medium">{MOCK_CUSTOMERS.find(c => c.id === o.userId)?.name || "Guest"}</td>
+                                                            <td className="py-3 font-bold">₹{o.total.toLocaleString("en-IN")}</td>
+                                                            <td className="py-3">
+                                                                <span className="text-[10px] px-2 py-1 bg-[#F9F6F0] rounded-full font-bold">{o.status}</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                             </table>
+                                        ) : (
+                                            "No orders yet. Place a test order to see it here."
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Recent Orders */}
-                            <div className="bg-white rounded-xl border border-[#F4E8D1] p-6">
-                                <div className="flex items-center justify-between mb-5">
-                                    <h2 className="font-serif text-[18px] text-[#3D1014]">Recent Orders</h2>
-                                    <button onClick={() => setSection("orders")} className="text-[10px] uppercase tracking-widest text-[#C5A059] flex items-center gap-1 font-bold hover:text-[#58181F] transition-colors">
-                                        View All <ChevronRight size={12} />
-                                    </button>
-                                </div>
-                                <div className="space-y-3">
-                                    {MOCK_ORDERS.slice(0, 4).map((order) => {
-                                        const Icon = statusIcon[order.status];
-                                        const customer = MOCK_CUSTOMERS.find(c => c.id === order.userId);
-                                        return (
-                                            <div key={order.id} className="flex items-center justify-between py-3 border-b border-[#F4E8D1] last:border-0">
-                                                <div className="flex items-center gap-3">
-                                                    <img src={order.products[0].image} alt="" className="w-9 h-9 rounded-lg object-cover bg-[#F9F6F0]" />
-                                                    <div>
-                                                        <p className="text-sm font-medium text-[#3D1014]">{order.id}</p>
-                                                        <p className="text-[10px] text-[#3D1014]/40">{customer?.name || "Customer"} · {new Date(order.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold border ${statusColor[order.status]}`}>
-                                                        <Icon size={9} /> {order.status}
-                                                    </span>
-                                                    <span className="font-bold text-sm text-[#3D1014] w-20 text-right">₹{order.total.toLocaleString("en-IN")}</span>
+                                {/* Low Stock Alert */}
+                                <div className="bg-white rounded-xl shadow-sm border border-[#F4E8D1] overflow-hidden">
+                                    <div className="p-5 border-b border-[#F4E8D1]">
+                                        <h3 className="font-serif text-lg text-[#3D1014] flex items-center gap-2">
+                                            <AlertTriangle size={18} className="text-amber-500" /> Low Stock
+                                        </h3>
+                                    </div>
+                                    <div className="p-5 space-y-4">
+                                        {lowStockProducts.map(p => (
+                                            <div key={p.id} className="flex gap-3 items-center">
+                                                <img src={p.image} alt={p.name} className="w-10 h-10 rounded-md object-cover bg-gray-100" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-[#3D1014] line-clamp-1">{p.name}</p>
+                                                    <p className="text-xs text-amber-600 font-bold mt-0.5">{Math.floor(Math.random() * 4) + 1} left</p>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* ORDERS */}
-                    {section === "orders" && (
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                            <div className="mb-8">
-                                <p className="text-[10px] uppercase tracking-[0.35em] text-[#C5A059] font-bold mb-1">Management</p>
-                                <h1 className="text-[28px] font-serif text-[#3D1014]">All Orders</h1>
-                            </div>
-                            <div className="bg-white rounded-xl border border-[#F4E8D1] overflow-hidden">
-                                <table className="w-full">
-                                    <thead className="bg-[#FDFBF7] border-b border-[#F4E8D1]">
-                                        <tr>
-                                            {["Order ID", "Customer", "Items", "Total", "Date", "Status"].map(h => (
-                                                <th key={h} className="text-left px-5 py-3 text-[9px] uppercase tracking-widest text-[#3D1014]/40 font-bold">{h}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {MOCK_ORDERS.map((order) => {
-                                            const Icon = statusIcon[order.status];
-                                            const customer = MOCK_CUSTOMERS.find(c => c.id === order.userId);
-                                            return (
-                                                <tr key={order.id} className="border-b border-[#F4E8D1] last:border-0 hover:bg-[#FDFBF7] transition-colors">
-                                                    <td className="px-5 py-3.5 text-sm font-bold text-[#3D1014]">{order.id}</td>
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-7 h-7 rounded-full bg-[#58181F]/10 flex items-center justify-center text-[10px] font-bold text-[#58181F]">
-                                                                {customer?.avatar || "?"}
-                                                            </div>
-                                                            <span className="text-sm text-[#3D1014]">{customer?.name || "–"}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-sm text-[#3D1014]/60">{order.products.length} item{order.products.length > 1 ? "s" : ""}</td>
-                                                    <td className="px-5 py-3.5 text-sm font-bold text-[#3D1014]">₹{order.total.toLocaleString("en-IN")}</td>
-                                                    <td className="px-5 py-3.5 text-[11px] text-[#3D1014]/50">{new Date(order.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}</td>
-                                                    <td className="px-5 py-3.5">
-                                                        <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold border w-fit ${statusColor[order.status]}`}>
-                                                            <Icon size={9} /> {order.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
                             </div>
                         </motion.div>
                     )}
 
                     {/* PRODUCTS */}
                     {section === "products" && (
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <p className="text-[10px] uppercase tracking-[0.35em] text-[#C5A059] font-bold mb-1">Catalogue</p>
-                                    <h1 className="text-[28px] font-serif text-[#3D1014]">Products</h1>
-                                </div>
-                                <button className="bg-[#58181F] text-white px-5 py-2.5 rounded-lg text-[11px] uppercase tracking-widest font-bold hover:bg-[#3D1014] transition-colors">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                            <div className="flex justify-between items-center mb-6">
+                                <input type="text" placeholder="Search products..." className="w-full max-w-sm px-4 py-2 border border-[#F4E8D1] rounded-lg text-sm focus:outline-none focus:border-[#C5A059]" />
+                                <button onClick={() => setIsAddProductOpen(true)} className="bg-[#58181F] text-white px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest hidden md:block hover:bg-[#3D1014] transition-colors">
                                     + Add Product
                                 </button>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {SAMPLE_PRODUCTS.map((p) => {
-                                    const discount = Math.round(((p.mrp - p.price) / p.mrp) * 100);
-                                    return (
-                                        <div key={p.id} className="bg-white border border-[#F4E8D1] rounded-xl overflow-hidden group">
-                                            <div className="relative aspect-square overflow-hidden bg-[#F9F6F0]">
-                                                <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                                <div className="absolute top-2 left-2 bg-[#58181F] text-white text-[8px] font-bold px-1.5 py-0.5">-{discount}%</div>
-                                                <div className="absolute top-2 right-2 bg-white/90 text-[8px] font-bold text-[#3D1014] px-1.5 py-0.5 rounded capitalize">{p.category}</div>
-                                            </div>
-                                            <div className="p-3">
-                                                <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold mb-0.5">{p.subcategory}</p>
-                                                <p className="text-[13px] font-serif text-[#3D1014] line-clamp-1">{p.name}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-[12px] font-bold text-[#58181F]">₹{p.price}</span>
-                                                    <span className="text-[10px] text-[#3D1014]/30 line-through">₹{p.mrp}</span>
-                                                </div>
-                                                <div className="flex gap-2 mt-3">
-                                                    <button className="flex-1 py-1.5 border border-[#F4E8D1] rounded-lg text-[9px] uppercase tracking-widest text-[#3D1014]/60 hover:border-[#C5A059] hover:text-[#C5A059] transition-colors font-bold">Edit</button>
-                                                    <button className="flex-1 py-1.5 border border-red-100 rounded-lg text-[9px] uppercase tracking-widest text-red-400 hover:bg-red-50 transition-colors font-bold">Delete</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </motion.div>
-                    )}
 
-                    {/* CUSTOMERS */}
-                    {section === "customers" && (
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                            <div className="mb-8">
-                                <p className="text-[10px] uppercase tracking-[0.35em] text-[#C5A059] font-bold mb-1">Community</p>
-                                <h1 className="text-[28px] font-serif text-[#3D1014]">Customers</h1>
-                            </div>
-                            <div className="bg-white rounded-xl border border-[#F4E8D1] overflow-hidden">
-                                <table className="w-full">
-                                    <thead className="bg-[#FDFBF7] border-b border-[#F4E8D1]">
-                                        <tr>
-                                            {["Customer", "Contact", "Orders", "Total Spent", "Member Since"].map(h => (
-                                                <th key={h} className="text-left px-5 py-3 text-[9px] uppercase tracking-widest text-[#3D1014]/40 font-bold">{h}</th>
-                                            ))}
+                            <div className="bg-white rounded-xl shadow-sm border border-[#F4E8D1] overflow-x-auto">
+                                <table className="w-full text-left min-w-[700px]">
+                                    <thead className="border-b border-[#F4E8D1] bg-[#FDFBF7]">
+                                        <tr className="text-[10px] uppercase text-[#3D1014]/60 font-bold">
+                                            <th className="px-5 py-4">Image</th>
+                                            <th className="px-5 py-4">Product</th>
+                                            <th className="px-5 py-4">Category</th>
+                                            <th className="px-5 py-4">Price</th>
+                                            <th className="px-5 py-4">Stock</th>
+                                            <th className="px-5 py-4 text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {MOCK_CUSTOMERS.map((c) => (
-                                            <tr key={c.id} className="border-b border-[#F4E8D1] last:border-0 hover:bg-[#FDFBF7] transition-colors">
-                                                <td className="px-5 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C5A059]/30 to-[#58181F]/20 flex items-center justify-center text-[11px] font-bold text-[#58181F]">
-                                                            {c.avatar}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-[#3D1014]">{c.name}</p>
-                                                            <p className="text-[10px] text-[#3D1014]/40">{c.email}</p>
-                                                        </div>
+                                        {SAMPLE_PRODUCTS.map(p => (
+                                            <tr key={p.id} className="border-b border-[#F4E8D1] last:border-0 hover:bg-[#F9F6F0]/50 transition-colors">
+                                                <td className="px-5 py-3">
+                                                    <img src={p.image} alt={p.name} className="w-12 h-12 rounded object-cover border border-[#F4E8D1]" />
+                                                </td>
+                                                <td className="px-5 py-3">
+                                                    <p className="text-sm font-medium text-[#3D1014]">{p.name}</p>
+                                                    <p className="text-xs text-[#3D1014]/50 mt-0.5 line-clamp-1">{p.category}</p>
+                                                </td>
+                                                <td className="px-5 py-3 text-xs text-[#3D1014]/70">{p.category} / {p.subcategory}</td>
+                                                <td className="px-5 py-3 font-bold text-sm text-[#3D1014]">₹{p.price}</td>
+                                                <td className="px-5 py-3 text-sm text-[#3D1014]">{Math.floor(Math.random() * 20)+1}</td>
+                                                <td className="px-5 py-3">
+                                                    <div className="flex gap-3 justify-center text-[#3D1014]/40">
+                                                        <button className="hover:text-[#C5A059]"><Edit size={16} /></button>
+                                                        <button className="hover:text-red-500"><Trash2 size={16} /></button>
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-4 text-[11px] text-[#3D1014]/60">{c.phone}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            {/* Mobile Add Product FAB */}
+                            <button onClick={() => setIsAddProductOpen(true)} className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#58181F] text-white rounded-full flex items-center justify-center shadow-lg z-20 hover:bg-[#3D1014] transition-colors">
+                                <Package size={24} />
+                            </button>
+                        </motion.div>
+                    )}
+
+                    {/* ORDERS */}
+                    {section === "orders" && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
+                                {["All", "Pending", "Confirmed", "Ready", "Delivered", "Canceled"].map(t => (
+                                    <button key={t} className="px-4 py-2 border border-[#F4E8D1] rounded-lg text-xs font-bold uppercase tracking-wider text-[#3D1014]/60 whitespace-nowrap hover:bg-[#F4E8D1] focus:bg-[#58181F] focus:text-white">
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-sm border border-[#F4E8D1] overflow-x-auto">
+                                <table className="w-full text-left min-w-[700px]">
+                                    <thead className="border-b border-[#F4E8D1] bg-[#FDFBF7]">
+                                        <tr className="text-[10px] uppercase text-[#3D1014]/60 font-bold">
+                                            <th className="px-5 py-4">Customer</th>
+                                            <th className="px-5 py-4">Products</th>
+                                            <th className="px-5 py-4">Amount</th>
+                                            <th className="px-5 py-4">Type</th>
+                                            <th className="px-5 py-4 w-32">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {MOCK_ORDERS.map(o => (
+                                            <tr key={o.id} className="border-b border-[#F4E8D1] last:border-0 hover:bg-[#F9F6F0]/50">
                                                 <td className="px-5 py-4">
-                                                    <span className="bg-[#58181F]/8 text-[#58181F] text-[11px] font-bold px-2.5 py-1 rounded-full">{c.orders} orders</span>
+                                                    <p className="text-sm font-medium text-[#3D1014]">{MOCK_CUSTOMERS.find(c => c.id === o.userId)?.name || "Guest"}</p>
+                                                    <p className="text-xs text-[#3D1014]/40">{o.id}</p>
                                                 </td>
-                                                <td className="px-5 py-4 text-sm font-bold text-[#3D1014]">₹{c.totalSpent.toLocaleString("en-IN")}</td>
-                                                <td className="px-5 py-4 text-[11px] text-[#3D1014]/50">{new Date(c.joinDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}</td>
+                                                <td className="px-5 py-4 text-xs text-[#3D1014]/70 uppercase tracking-widest">{o.products.length} Items</td>
+                                                <td className="px-5 py-4 font-bold text-sm text-[#3D1014]">₹{o.total.toLocaleString("en-IN")}</td>
+                                                <td className="px-5 py-4 text-xs text-[#3D1014]/70">Delivery</td>
+                                                <td className="px-5 py-4">
+                                                    <select className="w-full text-xs font-bold border border-[#F4E8D1] rounded px-2 py-1 outline-none text-[#3D1014]">
+                                                        <option>Pending</option>
+                                                        <option>Confirmed</option>
+                                                        <option>Ready</option>
+                                                        <option>Delivered</option>
+                                                    </select>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -330,35 +304,201 @@ export default function AdminPage() {
                         </motion.div>
                     )}
 
-                    {/* SETTINGS */}
-                    {section === "settings" && (
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                            <div className="mb-8">
-                                <p className="text-[10px] uppercase tracking-[0.35em] text-[#C5A059] font-bold mb-1">Configuration</p>
-                                <h1 className="text-[28px] font-serif text-[#3D1014]">Admin Settings</h1>
-                            </div>
-                            <div className="space-y-4">
-                                {[
-                                    { title: "Store Information", desc: "Update store name, description, and contact details" },
-                                    { title: "Shipping Zones", desc: "Configure delivery areas and shipping rates" },
-                                    { title: "Payment Gateway", desc: "Manage payment methods and gateway settings" },
-                                    { title: "Tax Configuration", desc: "Set GST and other tax rates by category" },
-                                    { title: "Notification Templates", desc: "Customize order and shipping email templates" },
-                                    { title: "Admin Access", desc: "Manage admin accounts and role permissions" },
-                                ].map((item) => (
-                                    <div key={item.title} className="bg-white border border-[#F4E8D1] rounded-xl p-5 flex items-center justify-between hover:border-[#C5A059]/40 transition-colors">
-                                        <div>
-                                            <p className="font-semibold text-sm text-[#3D1014]">{item.title}</p>
-                                            <p className="text-[11px] text-[#3D1014]/40 mt-0.5">{item.desc}</p>
-                                        </div>
-                                        <ChevronRight size={16} className="text-[#3D1014]/30" />
+                    {/* CATEGORIES */}
+                    {section === "categories" && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col md:flex-row gap-6">
+                            {/* Fancy */}
+                            <div className="flex-1 bg-white rounded-xl shadow-sm border border-[#F4E8D1]">
+                                <div className="p-4 border-b border-[#F4E8D1] flex justify-between items-center">
+                                    <h3 className="font-serif text-lg text-[#3D1014]">Fancy</h3>
+                                    <button className="text-red-400 hover:bg-red-50 p-1.5 rounded"><Trash2 size={14}/></button>
+                                </div>
+                                <div className="p-4">
+                                    <p className="text-[10px] uppercase tracking-widest text-[#3D1014]/40 font-bold mb-3">Subcategories</p>
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        {["Earrings", "Bangles", "Necklaces", "Hair Accessories"].map(s => (
+                                            <span key={s} className="px-3 py-1.5 bg-[#F9F6F0] border border-[#F4E8D1] text-[#3D1014] text-xs font-medium rounded-md flex items-center gap-2">
+                                                {s} <X size={12} className="opacity-40 hover:opacity-100 cursor-pointer"/>
+                                            </span>
+                                        ))}
                                     </div>
-                                ))}
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Add subcategory..." className="flex-1 px-3 py-2 border border-[#F4E8D1] rounded text-sm outline-none focus:border-[#C5A059]" />
+                                        <button className="bg-[#58181F] text-white px-4 text-xs font-bold rounded">ADD</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Cosmetics */}
+                            <div className="flex-1 bg-white rounded-xl shadow-sm border border-[#F4E8D1]">
+                                <div className="p-4 border-b border-[#F4E8D1] flex justify-between items-center">
+                                    <h3 className="font-serif text-lg text-[#3D1014]">Cosmetics</h3>
+                                    <button className="text-red-400 hover:bg-red-50 p-1.5 rounded"><Trash2 size={14}/></button>
+                                </div>
+                                <div className="p-4">
+                                    <p className="text-[10px] uppercase tracking-widest text-[#3D1014]/40 font-bold mb-3">Subcategories</p>
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        {["Lips", "Fragrance", "Eyes", "Skincare"].map(s => (
+                                            <span key={s} className="px-3 py-1.5 bg-[#F9F6F0] border border-[#F4E8D1] text-[#3D1014] text-xs font-medium rounded-md flex items-center gap-2">
+                                                {s} <X size={12} className="opacity-40 hover:opacity-100 cursor-pointer"/>
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Add subcategory..." className="flex-1 px-3 py-2 border border-[#F4E8D1] rounded text-sm outline-none focus:border-[#C5A059]" />
+                                        <button className="bg-[#58181F] text-white px-4 text-xs font-bold rounded">ADD</button>
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
                     )}
+
+                    {/* SETTINGS */}
+                    {section === "settings" && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 max-w-2xl">
+                            <div className="bg-white rounded-xl shadow-sm border border-[#F4E8D1] p-6">
+                                <h3 className="font-serif text-lg text-[#3D1014] mb-4">Shop Information</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-1.5 block">Shop Name</label>
+                                        <input type="text" defaultValue="Singar Fancy" className="w-full px-4 py-2 border border-[#F4E8D1] rounded focus:outline-none focus:border-[#C5A059]" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-1.5 block">WhatsApp Number</label>
+                                        <input type="text" defaultValue="+91 90000 00000" className="w-full px-4 py-2 border border-[#F4E8D1] rounded focus:outline-none focus:border-[#C5A059]" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-1.5 block">Store Address</label>
+                                        <textarea rows={3} defaultValue="Main Bazaar Road, Your City" className="w-full px-4 py-2 border border-[#F4E8D1] rounded focus:outline-none focus:border-[#C5A059] resize-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-[#F4E8D1] p-6 flex gap-4">
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-1.5 block">Delivery Charge (₹)</label>
+                                    <input type="number" defaultValue="99" className="w-full px-4 py-2 border border-[#F4E8D1] rounded focus:outline-none focus:border-[#C5A059]" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-1.5 block">Free Delivery Above (₹)</label>
+                                    <input type="number" defaultValue="999" className="w-full px-4 py-2 border border-[#F4E8D1] rounded focus:outline-none focus:border-[#C5A059]" />
+                                </div>
+                            </div>
+                            
+                            <button className="bg-[#58181F] text-white px-6 py-3 rounded-lg text-xs font-bold uppercase tracking-widest shadow-md">
+                                Save Changes
+                            </button>
+                        </motion.div>
+                    )}
+
                 </div>
             </main>
+
+            {/* Add Product Modal */}
+            <AnimatePresence>
+                {isAddProductOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+                        onClick={() => setIsAddProductOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-5 border-b border-[#F4E8D1] flex justify-between items-center bg-[#FDFBF7]">
+                                <h2 className="font-serif text-xl text-[#3D1014]">New Product</h2>
+                                <button onClick={() => setIsAddProductOpen(false)} className="text-[#3D1014]/50 hover:text-[#3D1014]">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto space-y-6">
+                                {/* Image */}
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Image</label>
+                                    <div className="flex gap-4 items-start">
+                                        <div className="w-28 h-28 bg-[#F9F6F0] border border-[#F4E8D1] flex flex-col items-center justify-center text-[#3D1014]/40 rounded-md">
+                                            <span className="text-[10px] font-bold mt-1">No image</span>
+                                        </div>
+                                        <div className="flex-1 space-y-3">
+                                            <button className="bg-[#F9F6F0] border border-[#F4E8D1] px-4 py-2 rounded flex items-center gap-2 text-xs font-bold text-[#3D1014] hover:bg-[#F4E8D1]">
+                                                <UploadCloud size={14} /> Upload
+                                            </button>
+                                            <input type="text" placeholder="or paste Image URL" className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059]" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Name & Stock */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Name</label>
+                                        <input type="text" className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059]" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Stock</label>
+                                        <input type="number" defaultValue="0" className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059]" />
+                                    </div>
+                                </div>
+
+                                {/* Price & MRP */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Price (₹)</label>
+                                        <input type="number" defaultValue="0" className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059]" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">MRP (₹) — Optional</label>
+                                        <input type="number" className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059]" />
+                                    </div>
+                                </div>
+
+                                {/* Category & Subcategory */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Category</label>
+                                        <select className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059] bg-white">
+                                            <option>Fancy</option>
+                                            <option>Cosmetics</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Subcategory</label>
+                                        <select className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059] bg-white">
+                                            <option>Select...</option>
+                                            <option>Earrings</option>
+                                            <option>Bangles</option>
+                                            <option>Necklaces</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#3D1014]/60 mb-2 block">Description</label>
+                                    <textarea rows={3} className="w-full px-4 py-2 border border-[#F4E8D1] rounded text-sm focus:outline-none focus:border-[#C5A059] resize-none"></textarea>
+                                </div>
+                            </div>
+
+                            <div className="p-5 border-t border-[#F4E8D1] flex justify-end gap-3 bg-[#FDFBF7]">
+                                <button onClick={() => setIsAddProductOpen(false)} className="px-5 py-2 border border-[#F4E8D1] rounded text-sm font-bold text-[#3D1014]/60 hover:bg-[#F4E8D1] transition-colors">
+                                    Cancel
+                                </button>
+                                <button className="px-6 py-2 bg-[#58181F] text-white rounded text-sm font-bold shadow-md hover:bg-[#3D1014] transition-colors">
+                                    Save
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 }

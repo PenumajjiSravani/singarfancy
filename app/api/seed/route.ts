@@ -10,16 +10,21 @@ export async function POST() {
         await connectDB();
 
         // --- Seed Users ---
-        const adminExists = await User.findOne({ email: 'admin@singar.com' });
-        if (!adminExists) {
+        let adminUser = await User.findOne({ email: 'singar365.com@gmail.com' });
+        if (!adminUser) {
             await User.create({
                 name: 'Admin',
-                email: 'admin@singar.com',
-                password: await bcrypt.hash('admin123', 12),
+                email: 'singar365.com@gmail.com',
+                password: await bcrypt.hash('sinagr@739', 12),
                 role: 'admin',
                 provider: 'email',
                 joinDate: new Date('2025-01-01'),
             });
+        } else {
+            // Force update the password in case it was wrong
+            adminUser.password = await bcrypt.hash('sinagr@739', 12);
+            adminUser.role = 'admin';
+            await adminUser.save();
         }
 
         const sampleUsers = [
@@ -82,8 +87,8 @@ export async function POST() {
             success: true,
             message: 'Database seeded successfully!',
             info: {
-                adminEmail: 'admin@singar.com',
-                adminPassword: 'admin123',
+                adminEmail: 'Singar365.com@gmail.com',
+                adminPassword: 'sinagr@739',
                 sampleUserEmail: 'priya@example.com',
                 sampleUserPassword: 'user1234',
             }
