@@ -8,12 +8,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard, ShoppingBag, FolderTree, Package,
     LogOut, Settings, Menu, X, Edit, Trash2, IndianRupee,
-    Clock, CheckCircle, UploadCloud, AlertTriangle
+    Clock, CheckCircle, UploadCloud, AlertTriangle, MapPin, Phone, User as UserIcon, Truck, Calendar
 } from "lucide-react";
 
-import { MOCK_ORDERS, MOCK_CUSTOMERS, SAMPLE_PRODUCTS } from "@/lib/store";
+import { MOCK_ORDERS, MOCK_CUSTOMERS, SAMPLE_PRODUCTS, Order } from "@/lib/store";
 
 type Section = "dashboard" | "products" | "orders" | "categories" | "settings";
+
+const statusColors: Record<string, string> = {
+    Pending: "bg-amber-100 text-amber-700 border-amber-200",
+    Confirmed: "bg-blue-100 text-blue-700 border-blue-200",
+    Ready: "bg-purple-100 text-purple-700 border-purple-200",
+    Delivered: "bg-green-100 text-green-700 border-green-200",
+    Cancelled: "bg-red-100 text-red-700 border-red-200",
+};
 
 export default function AdminPage() {
     const router = useRouter();
@@ -23,15 +31,18 @@ export default function AdminPage() {
     const [section, setSection] = useState<Section>("dashboard");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
 
     // Authentication Guard
     useEffect(() => {
+        setIsMounted(true);
         if (status === "unauthenticated") { router.push("/login"); return; }
         // Uncomment once role setup is verified
         // if (user && user.role !== "admin") { router.push("/dashboard"); }
     }, [user, status, router]);
 
-    if (status === "loading" || !user) return <div className="min-h-screen bg-[#FDFBF7]" />;
+    if (!isMounted || status === "loading" || !user) return <div className="min-h-screen bg-[#FDFBF7]" />;
 
     // Derived Stats
     const totalOrders = MOCK_ORDERS.length;
@@ -163,11 +174,17 @@ export default function AdminPage() {
                                                 </thead>
                                                 <tbody>
                                                     {MOCK_ORDERS.slice(0,5).map(o => (
-                                                        <tr key={o.id} className="border-b border-[#F4E8D1] last:border-0 text-sm text-[#3D1014]">
+                                                        <tr 
+                                                            key={o.id} 
+                                                            onClick={() => setSelectedOrder(o)}
+                                                            className="border-b border-[#F4E8D1] last:border-0 text-sm text-[#3D1014] cursor-pointer hover:bg-[#F9F6F0]/50 transition-colors"
+                                                        >
                                                             <td className="py-3 font-medium">{MOCK_CUSTOMERS.find(c => c.id === o.userId)?.name || "Guest"}</td>
                                                             <td className="py-3 font-bold">₹{o.total.toLocaleString("en-IN")}</td>
                                                             <td className="py-3">
-                                                                <span className="text-[10px] px-2 py-1 bg-[#F9F6F0] rounded-full font-bold">{o.status}</span>
+                                                                <span className={`text-[10px] px-2 py-1 rounded-full font-bold border ${statusColors[o.status] || 'bg-[#F9F6F0] border-[#F4E8D1]'}`}>
+                                                                    {o.status}
+                                                                </span>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -192,7 +209,7 @@ export default function AdminPage() {
                                                 <img src={p.image} alt={p.name} className="w-10 h-10 rounded-md object-cover bg-gray-100" />
                                                 <div className="flex-1">
                                                     <p className="text-sm font-medium text-[#3D1014] line-clamp-1">{p.name}</p>
-                                                    <p className="text-xs text-amber-600 font-bold mt-0.5">{Math.floor(Math.random() * 4) + 1} left</p>
+                                                    <p className="text-xs text-amber-600 font-bold mt-0.5">Limited stock</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -236,7 +253,7 @@ export default function AdminPage() {
                                                 </td>
                                                 <td className="px-5 py-3 text-xs text-[#3D1014]/70">{p.category} / {p.subcategory}</td>
                                                 <td className="px-5 py-3 font-bold text-sm text-[#3D1014]">₹{p.price}</td>
-                                                <td className="px-5 py-3 text-sm text-[#3D1014]">{Math.floor(Math.random() * 20)+1}</td>
+                                                <td className="px-5 py-3 text-sm text-[#3D1014]">In Stock</td>
                                                 <td className="px-5 py-3">
                                                     <div className="flex gap-3 justify-center text-[#3D1014]/40">
                                                         <button className="hover:text-[#C5A059]"><Edit size={16} /></button>
@@ -280,7 +297,11 @@ export default function AdminPage() {
                                     </thead>
                                     <tbody>
                                         {MOCK_ORDERS.map(o => (
-                                            <tr key={o.id} className="border-b border-[#F4E8D1] last:border-0 hover:bg-[#F9F6F0]/50">
+                                            <tr 
+                                                key={o.id} 
+                                                onClick={() => setSelectedOrder(o)}
+                                                className="border-b border-[#F4E8D1] last:border-0 hover:bg-[#F9F6F0]/50 cursor-pointer transition-colors"
+                                            >
                                                 <td className="px-5 py-4">
                                                     <p className="text-sm font-medium text-[#3D1014]">{MOCK_CUSTOMERS.find(c => c.id === o.userId)?.name || "Guest"}</p>
                                                     <p className="text-xs text-[#3D1014]/40">{o.id}</p>
@@ -289,12 +310,9 @@ export default function AdminPage() {
                                                 <td className="px-5 py-4 font-bold text-sm text-[#3D1014]">₹{o.total.toLocaleString("en-IN")}</td>
                                                 <td className="px-5 py-4 text-xs text-[#3D1014]/70">Delivery</td>
                                                 <td className="px-5 py-4">
-                                                    <select className="w-full text-xs font-bold border border-[#F4E8D1] rounded px-2 py-1 outline-none text-[#3D1014]">
-                                                        <option>Pending</option>
-                                                        <option>Confirmed</option>
-                                                        <option>Ready</option>
-                                                        <option>Delivered</option>
-                                                    </select>
+                                                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${statusColors[o.status] || 'bg-[#F9F6F0] border-[#F4E8D1]'}`}>
+                                                        {o.status}
+                                                    </span>
                                                 </td>
                                             </tr>
                                         ))}
@@ -393,6 +411,159 @@ export default function AdminPage() {
 
                 </div>
             </main>
+
+            {/* Order Details Modal */}
+            <AnimatePresence>
+                {selectedOrder && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSelectedOrder(null)}
+                            className="absolute inset-0 bg-[#3D1014]/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-2xl bg-[#FDFBF7] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-[101]"
+                        >
+                            {/* Header */}
+                            <div className="p-5 border-b border-[#F4E8D1] flex items-center justify-between bg-white text-[#3D1014]">
+                                <div>
+                                    <h2 className="text-xl font-serif">Order Details</h2>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">{selectedOrder.id}</span>
+                                        <span className="text-[#F4E8D1]">|</span>
+                                        <span className="text-[10px] text-[#3D1014]/40 flex items-center gap-1">
+                                            <Calendar size={10} /> {new Date(selectedOrder.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-[#F4E8D1] rounded-full transition-colors">
+                                    <X size={20} className="text-[#3D1014]/40" />
+                                </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    {/* Customer Info */}
+                                    <section>
+                                        <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C5A059] mb-4 flex items-center gap-2">
+                                            <UserIcon size={14} /> Customer Details
+                                        </h3>
+                                        <div className="space-y-3 bg-white p-4 rounded-xl border border-[#F4E8D1]">
+                                            <div>
+                                                <p className="text-[9px] uppercase text-[#3D1014]/40 font-bold tracking-widest mb-0.5">Name</p>
+                                                <p className="text-sm font-medium text-[#3D1014]">
+                                                    {MOCK_CUSTOMERS.find(c => c.id === selectedOrder.userId)?.name || "Guest Customer"}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase text-[#3D1014]/40 font-bold tracking-widest mb-0.5">Phone</p>
+                                                <p className="text-sm font-medium text-[#3D1014]">
+                                                    {MOCK_CUSTOMERS.find(c => c.id === selectedOrder.userId)?.phone || "+91 98765 43210"}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] uppercase text-[#3D1014]/40 font-bold tracking-widest mb-0.5">Address</p>
+                                                <div className="flex gap-2 text-sm text-[#3D1014]/70 leading-snug">
+                                                    <MapPin size={14} className="flex-shrink-0 mt-0.5 text-[#C5A059]" />
+                                                    {selectedOrder.address}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    {/* Order Type & Status */}
+                                    <section className="space-y-6">
+                                        <div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C5A059] mb-4 flex items-center gap-2">
+                                                <Truck size={14} /> Delivery Type
+                                            </h3>
+                                            <div className="bg-white p-3 rounded-xl border border-[#F4E8D1] flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-[#F9F6F0] flex items-center justify-center text-[#C5A059]">
+                                                    <Truck size={16} />
+                                                </div>
+                                                <span className="text-sm font-medium text-[#3D1014]">Standard Delivery</span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C5A059] mb-4">Update Status</h3>
+                                            <select 
+                                                defaultValue={selectedOrder.status}
+                                                className={`w-full text-xs font-bold border rounded-lg px-3 py-2.5 outline-none transition-all ${statusColors[selectedOrder.status] || 'border-[#F4E8D1] bg-white'}`}
+                                            >
+                                                <option value="Pending">Pending</option>
+                                                <option value="Confirmed">Confirmed</option>
+                                                <option value="Ready">Ready</option>
+                                                <option value="Delivered">Delivered</option>
+                                                <option value="Cancelled">Cancelled</option>
+                                            </select>
+                                        </div>
+                                    </section>
+                                </div>
+
+                                {/* Products */}
+                                <section>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C5A059] mb-4 flex items-center gap-2">
+                                        <Package size={14} /> Ordered Products
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {selectedOrder.products.map((item, i) => (
+                                            <div key={i} className="bg-white p-3 rounded-xl border border-[#F4E8D1] flex items-center gap-4">
+                                                <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover border border-[#F4E8D1]" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-[#3D1014] truncate">{item.name}</p>
+                                                    <p className="text-[10px] text-[#3D1014]/40 mt-0.5 uppercase tracking-wider">{item.category}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-bold text-[#3D1014]">₹{(item.price * item.qty).toLocaleString("en-IN")}</p>
+                                                    <p className="text-[10px] text-[#3D1014]/40">{item.qty} × ₹{item.price}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                {/* Payment Summary */}
+                                <section className="p-5 bg-white rounded-2xl border border-[#F4E8D1]">
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-[#3D1014]/40">Subtotal</span>
+                                            <span className="font-medium text-[#3D1014]">₹{(selectedOrder.total - 50).toLocaleString("en-IN")}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-[#3D1014]/40">Delivery Charge</span>
+                                            <span className="font-medium text-[#3D1014]">₹50</span>
+                                        </div>
+                                        <div className="pt-3 border-t border-[#F4E8D1] flex justify-between items-center">
+                                            <span className="font-serif text-[#3D1014]">Total Amount</span>
+                                            <span className="text-xl font-serif text-[#58181F]">₹{selectedOrder.total.toLocaleString("en-IN")}</span>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+
+                            {/* Footer / Quick Actions */}
+                            <div className="p-5 bg-white border-t border-[#F4E8D1] grid grid-cols-3 gap-3">
+                                <button className="flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors">
+                                    <CheckCircle size={14} /> Confirm
+                                </button>
+                                <button className="flex items-center justify-center gap-2 py-3 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-purple-100 transition-colors">
+                                    <Package size={14} /> Ready
+                                </button>
+                                <button className="flex items-center justify-center gap-2 py-3 bg-green-50 text-green-600 rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-green-100 transition-colors">
+                                    <Truck size={14} /> Delivered
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Add Product Modal */}
             <AnimatePresence>
