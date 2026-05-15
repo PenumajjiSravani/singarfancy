@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useStore, MOCK_ORDERS, SAMPLE_PRODUCTS } from "@/lib/store";
+import { useStore, MOCK_ORDERS, SAMPLE_PRODUCTS, Order } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     ShoppingBag, Heart, User, Settings, LogOut, ChevronRight,
-    Package, MapPin, Phone, Mail, Sparkles, Clock, CheckCircle, Truck, XCircle, Home
+    Package, MapPin, Phone, Mail, Sparkles, Clock, CheckCircle, Truck, XCircle, Home, X
 } from "lucide-react";
 
 type Section = "overview" | "orders" | "wishlist" | "profile" | "settings";
@@ -25,8 +25,11 @@ export default function DashboardPage() {
     const [profileName, setProfileName] = useState("");
     const [profileEmail, setProfileEmail] = useState("");
     const [profilePhone, setProfilePhone] = useState("");
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         if (status === "unauthenticated") { router.push("/login"); return; }
         if (user?.role === "admin") { router.push("/admin"); return; }
         if (user) {
@@ -36,7 +39,7 @@ export default function DashboardPage() {
         }
     }, [user, status, router]);
 
-    if (status === "loading" || !user || user.role === "admin") return <div className="min-h-screen bg-[#FDFBF7]" />;
+    if (!isMounted || status === "loading" || !user || user.role === "admin") return <div className="min-h-screen bg-[#FDFBF7]" />;
 
     const myOrders = MOCK_ORDERS.filter((o) => o.userId === user.id);
     const wishlisted = SAMPLE_PRODUCTS.filter((p) => wishlist.includes(p.id));
@@ -150,7 +153,11 @@ export default function DashboardPage() {
                                     {myOrders.slice(0, 2).map((order) => {
                                         const Icon = statusIcon[order.status];
                                         return (
-                                            <div key={order.id} className="flex items-center justify-between py-3 border-b border-[#F4E8D1] last:border-0">
+                                            <div
+                                                key={order.id}
+                                                onClick={() => setSelectedOrder(order)}
+                                                className="flex items-center justify-between py-3 border-b border-[#F4E8D1] last:border-0 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                                            >
                                                 <div className="flex items-center gap-3">
                                                     <img src={order.products[0].image} alt="" className="w-10 h-10 rounded-lg object-cover bg-[#F9F6F0]" />
                                                     <div>
@@ -206,7 +213,11 @@ export default function DashboardPage() {
                                 {myOrders.map((order) => {
                                     const Icon = statusIcon[order.status];
                                     return (
-                                        <div key={order.id} className="bg-white border border-[#F4E8D1] rounded-xl p-6">
+                                        <div
+                                            key={order.id}
+                                            onClick={() => setSelectedOrder(order)}
+                                            className="bg-white border border-[#F4E8D1] rounded-xl p-6 cursor-pointer hover:border-[#C5A059] transition-all group"
+                                        >
                                             <div className="flex items-start justify-between mb-4">
                                                 <div>
                                                     <p className="font-bold text-[#3D1014] text-sm">{order.id}</p>
@@ -368,6 +379,106 @@ export default function DashboardPage() {
                     )}
                 </div>
             </main>
+
+            {/* Order Details Modal */}
+            <AnimatePresence>
+                {selectedOrder && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSelectedOrder(null)}
+                            className="absolute inset-0 bg-[#3D1014]/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-[101]"
+                        >
+                            {/* Modal Header */}
+                            <div className="p-6 border-b border-[#F4E8D1] flex items-center justify-between bg-[#FDFBF7]">
+                                <div>
+                                    <h2 className="text-xl font-serif text-[#3D1014]">Order Details</h2>
+                                    <p className="text-[11px] text-[#3D1014]/40 mt-0.5 tracking-wider uppercase font-bold">{selectedOrder.id}</p>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedOrder(null)}
+                                    className="p-2 hover:bg-[#58181F]/5 text-[#3D1014]/40 hover:text-[#58181F] rounded-full transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                                {/* Status & Date */}
+                                <div className="flex items-center justify-between bg-[#FDFBF7] p-4 rounded-xl border border-[#F4E8D1]">
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-widest text-[#3D1014]/40 font-bold mb-1">Status</p>
+                                        <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold ${statusColor[selectedOrder.status]}`}>
+                                            {(() => {
+                                                const Icon = statusIcon[selectedOrder.status];
+                                                return <Icon size={12} />;
+                                            })()}
+                                            {selectedOrder.status}
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] uppercase tracking-widest text-[#3D1014]/40 font-bold mb-1">Date</p>
+                                        <p className="text-sm font-medium text-[#3D1014]">
+                                            {new Date(selectedOrder.date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Items */}
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-widest text-[#C5A059] font-bold mb-4">Items</p>
+                                    <div className="space-y-3">
+                                        {selectedOrder.products.map((item, i) => (
+                                            <div key={i} className="flex gap-4 p-3 rounded-xl border border-[#F4E8D1] hover:bg-[#FDFBF7] transition-colors">
+                                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-[#F9F6F0] flex-shrink-0">
+                                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                    <p className="text-sm font-serif text-[#3D1014] truncate">{item.name}</p>
+                                                    <p className="text-[11px] text-[#3D1014]/40 mt-0.5">{item.category} · Qty: {item.qty}</p>
+                                                </div>
+                                                <div className="text-right flex flex-col justify-center">
+                                                    <p className="text-sm font-bold text-[#3D1014]">₹{(item.price * item.qty).toLocaleString("en-IN")}</p>
+                                                    <p className="text-[10px] text-[#3D1014]/40">₹{item.price.toLocaleString("en-IN")} each</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Shipping Information */}
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-widest text-[#C5A059] font-bold mb-4">Shipping Address</p>
+                                    <div className="flex gap-3 p-4 rounded-xl bg-[#FDFBF7] border border-[#F4E8D1]">
+                                        <MapPin size={18} className="text-[#C5A059] flex-shrink-0 mt-0.5" />
+                                        <p className="text-sm text-[#3D1014]/70 leading-relaxed font-medium">
+                                            {selectedOrder.address}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-6 border-t border-[#F4E8D1] bg-[#FDFBF7] flex items-center justify-between">
+                                <div className="text-[#3D1014]/40">
+                                    <p className="text-[10px] uppercase tracking-widest font-bold">Total Amount</p>
+                                    <p className="text-xs">Inc. all taxes</p>
+                                </div>
+                                <p className="text-2xl font-serif text-[#58181F]">₹{selectedOrder.total.toLocaleString("en-IN")}</p>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
